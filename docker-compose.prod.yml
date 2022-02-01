@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: ./backend
-    command: gunicorn backend.wsgi --bind 0.0.0.0:8000
+    command: gunicorn config.wsgi --timeout 1000 --workers 1 --threads 4 --bind 0.0.0.0:8000
     ports:
       - "80:8000"
     depends_on:
@@ -26,7 +26,7 @@ services:
       - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
       - db_data:/var/lib/mysql
     ports:
-      - 3306:3306
+      - 3308:3306
 
 volumes:
   db_data:
