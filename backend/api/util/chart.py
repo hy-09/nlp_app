@@ -2,44 +2,59 @@
 from api import np_dic
 from api.util.aozora import *
 from janome.tokenizer import Tokenizer
+import json
 
 tokenizer = Tokenizer()
 
 
-def get_content_chart(url):
-    # ダウンロード＆テキスト取得
-    aozora_dl_text = get_flat_text_from_aozora(url)
+def get_content_chart(id, url):
+    info = get_book_path_info(id)
 
+    book_path = info['book_path']
+    chartfile_path = info['chartfile_path']
+
+    # ダウンロード＆テキスト取得
+    aozora_dl_text = get_flat_text_from_aozora(id, url)
     # タグや外字などのデータを加工
     flat_text = flatten_aozora(aozora_dl_text) 
 
-    # フラットなテキストを「改行コード」で区切ってリスト形式にする
-    text_list = flat_text.split('\n')
+    if not os.path.exists(chartfile_path):
+        # フラットなテキストを「改行コード」で区切ってリスト形式にする
+        text_list = flat_text.split('\n')
 
-    # グラフ作成用のx軸,　y軸
-    # X座標（物語の進行の時間軸として、それまでの単語総数を入れる）
-    x =  []
-    # Y座標は２種類＝y1にポジティブ度合い、y2にネガティブ度合いとする
-    y1 = []
-    y2 = []
+        # グラフ作成用のx軸,　y軸
+        # X座標（物語の進行の時間軸として、それまでの単語総数を入れる）
+        x =  []
+        # Y座標は２種類＝y1にポジティブ度合い、y2にネガティブ度合いとする
+        y1 = []
+        y2 = []
 
-    total_word_count = 0
-    # 作ったリストの各要素に対して処理を行う
-    for text_str in text_list:
-        # リストの中身＝文字列に対してネガポジ分析を行う。
-        pos_count, neg_count, word_count = np_rate(text_str)
-        # 単語数が０となる行があった場合、その行を飛ばす（０除算防止）
-        if word_count <1 :
-            continue
-        # 全単語数に対するポジティブの比率を、リストに追加する
-        y1.append(pos_count/word_count)
-        # 全単語数に対するポジティブの比率を、リストに追加する
-        y2.append(neg_count/word_count)
-        # これまでに出てきた単語数の合計をX軸とする
-        total_word_count += word_count
-        x.append(total_word_count)
+        total_word_count = 0
+        # 作ったリストの各要素に対して処理を行う
+        for text_str in text_list:
+            # リストの中身＝文字列に対してネガポジ分析を行う。
+            pos_count, neg_count, word_count = np_rate(text_str)
+            # 単語数が０となる行があった場合、その行を飛ばす（０除算防止）
+            if word_count <1 :
+                continue
+            # 全単語数に対するポジティブの比率を、リストに追加する
+            y1.append(pos_count/word_count)
+            # 全単語数に対するポジティブの比率を、リストに追加する
+            y2.append(neg_count/word_count)
+            # これまでに出てきた単語数の合計をX軸とする
+            total_word_count += word_count
+            x.append(total_word_count)
 
-    return flat_text, { 'x': x, 'pos': y1, 'neg': y2}
+        chart = { "x": x, "pos": y1, "neg": y2}
+        
+        with open(chartfile_path, 'w') as f:
+            json.dump(chart, f)
+
+    else:
+        with open(chartfile_path) as f:
+            chart = json.load(f)
+            
+    return flat_text, chart
 
 def np_rate(input_str):
     pos_count  = 0

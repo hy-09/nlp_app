@@ -156,7 +156,6 @@ const app = new Vue({
     methods: {
         async getBooks() {
             const res = await axios.get('/api/books')
-            console.log(res.data.books)
             this.books = res.data.books
         },
         toggleActivate(book) {
@@ -168,13 +167,7 @@ const app = new Vue({
         },
         async synthesizeContent() {
             this.loadingSynthesizeContent = true
-            const urls = this.activeBooks.map(book => 
-                book.url
-            )
-            const titles = this.activeBooks.map(book => 
-                book.title
-            )
-            const res = await axios.post('/api/synthesize_content_title/', {urls: urls, titles: titles})
+            const res = await axios.post('/api/synthesize_content_title/', {books: this.activeBooks})
             this.synthesized.content = res.data.content
             this.synthesized.title = res.data.title
             this.loadingSynthesizeContent = false
@@ -193,7 +186,8 @@ const app = new Vue({
             this.loadingGetContentAndChart = true
             
             this.modal.title = book.title
-            const res = await axios.post('/api/content_chart/', {url: book.url})
+            const res = await axios.post('/api/content_chart/', {id: book.id, url: book.url})
+            console.log(res.data.chart)
             this.modal.content = res.data.content
             this.showChart(res.data.chart)
             this.loadingGetContentAndChart = false

@@ -4,14 +4,16 @@ from janome.tokenizer import Tokenizer
 
 tokenizer = Tokenizer()
 
-def get_synthesized_content_title(urls, titles):
-    content = get_synthesized_content(urls)
+def get_synthesized_content_title(books):
+    titles = [book['title'] for book in books]
+    
+    content = get_synthesized_content(books)
     title = get_synthesized_title(titles)
 
     return content, title
 
-def get_synthesized_content(urls):
-    flat_text = get_all_flat_text_from_zip_list(urls)
+def get_synthesized_content(books):
+    flat_text = get_all_flat_text_from_zip_list(books)
     markov_dict = make_markov_dict(flat_text, 3)
 
     line_count = 13

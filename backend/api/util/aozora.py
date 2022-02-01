@@ -4,42 +4,48 @@ import re
 import zipfile
 import urllib.request
 import os.path,glob
+
 # 青空文庫のURLから小説テキストデータを得る関数
-def get_flat_text_from_aozora(zip_url):
-  # zipファイル名の取得
-  zip_file_name = re.split(r'/', zip_url)[-1]
-  
-  # 既にダウンロード済みか確認後、URLからファイルを取得
-  if not os.path.exists(zip_file_name):
-    data = urllib.request.urlopen(zip_url).read()
-    with open(zip_file_name, mode="wb") as f:
-      f.write(data)
-  
-  # 拡張子を除いた名前で、展開用フォルダを作成
-  dir, ext = os.path.splitext(zip_file_name)
-  if not os.path.exists(dir):
-    os.makedirs(dir)
-  
-  # zipファイルの中身を全て、展開用フォルダに展開
-  unzipped_data = zipfile.ZipFile(zip_file_name, 'r')
-  unzipped_data.extractall(dir)
-  unzipped_data.close()
-  
-  # zipファイルの削除
-  os.remove(zip_file_name)
-  # 注：展開フォルダの削除は入れていない
-  
-  # テキストファイル(.txt)の抽出
-  wild_path = os.path.join(dir,'*.txt')
-  # テキストファイルは原則1つ同梱。最初の1つを取得
-  txt_file_path = glob.glob(wild_path)[0]
+def get_flat_text_from_aozora(id, url):
+    info = get_book_path_info(id)
+    
+    book_path = info['book_path']
+    contentfile_path = info['contentfile_path']
+    
+    if not os.path.exists(contentfile_path):
+        # zipファイル名の取得
+        zip_file_name = re.split(r'/', url)[-1]
+        
+        # 既にダウンロード済みか確認後、URLからファイルを取得
+        if not os.path.exists(zip_file_name):
+            data = urllib.request.urlopen(url).read()
+            with open(zip_file_name, mode="wb") as f:
+                f.write(data)
+        
+        # 展開用フォルダを作成
+        os.makedirs(book_path)
+        
+        # zipファイルの中身を全て、展開用フォルダに展開
+        with zipfile.ZipFile(zip_file_name, 'r') as unzipped_data:
+            unzipped_data.extractall(book_path)
+        
+        # zipファイルの削除
+        os.remove(zip_file_name)
+        # 注：展開フォルダの削除は入れていない
+        
+        # テキストファイル(.txt)の抽出
+        wild_path = os.path.join(book_path,'*.txt')
+        # テキストファイルは原則1つ同梱。最初の1つを取得
+        originname_path = glob.glob(wild_path)[0]
 
-  # 青空文庫はshift_jisのためデコードしてutf8にする
-  binary_data = open(txt_file_path, 'rb').read()
-  main_text = binary_data.decode('shift_jis')
+        os.rename(originname_path, contentfile_path)
+        
+    # 青空文庫はshift_jisのためデコードしてutf8にする
+    binary_data = open(contentfile_path, 'rb').read()
+    main_text = binary_data.decode('shift_jis')
 
-  # 取得したutf8のテキストデータを返す
-  return main_text
+    # 取得したutf8のテキストデータを返す
+    return main_text
 
 
 # 青空文庫のデータを加工して扱いやすくするコード
@@ -89,14 +95,14 @@ def flatten_aozora(text):
 
 import time
 # ZIP-URLのリストから全てのデータをダウンロード＆加工する関数
-def get_all_flat_text_from_zip_list(zip_list):
+def get_all_flat_text_from_zip_list(books):
   all_flat_text = ""
-  for zip_url in zip_list: 
+  for book in books: 
     # ダウンロードや解凍の失敗があり得るためTry文を使う
     # 十分なデータ量があるため数件の失敗はスキップでよい
     try:
       # 青空文庫からダウンロードする関数を実行
-      aozora_dl_text = get_flat_text_from_aozora(zip_url)
+      aozora_dl_text = get_flat_text_from_aozora(book['id'], book['url'])
       # 青空文庫のテキストを加工する関数を実行
       flat_text = flatten_aozora(aozora_dl_text) 
       # 結果を追記して改行。
@@ -111,3 +117,18 @@ def get_all_flat_text_from_zip_list(zip_list):
   
   # 全部がつながった大きなテキストデータを返す
   return all_flat_text
+
+def get_book_path_info(id):
+    books_path = 'books/'
+    book_path = books_path + str(id) + '/'
+    contentfile_name = 'content.txt'
+    chartfile_name = 'chart.json'
+
+    return {
+        'books_path': books_path,
+        'book_path': book_path,
+        'contentfile_name': contentfile_name,
+        'chartfile_name': chartfile_name,
+        'contentfile_path': book_path + contentfile_name,
+        'chartfile_path': book_path + chartfile_name,
+    }

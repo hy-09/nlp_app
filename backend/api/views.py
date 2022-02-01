@@ -18,7 +18,7 @@ def books(request):
 
 @api_view(['POST'])
 def synthesized_content_title(request):
-    content, title = get_synthesized_content_title(request.data['urls'], request.data['titles'])
+    content, title = get_synthesized_content_title(request.data['books'])
     data = {
         'content': content,
         'title': title
@@ -27,7 +27,7 @@ def synthesized_content_title(request):
 
 @api_view(['POST'])
 def content_chart(request):
-    content, chart = get_content_chart(request.data['url'])
+    content, chart = get_content_chart(request.data['id'], request.data['url'])
     data = {
         'content': content,
         'chart': chart
