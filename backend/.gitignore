@@ -1,5 +1,6 @@
 books/
 jisx0213-2004-std.txt
+docker-compose.yml
 pn.csv
 *.log
 *.pot
