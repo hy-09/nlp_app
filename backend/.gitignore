@@ -1,4 +1,6 @@
-*_ruby_*
+books/
+jisx0213-2004-std.txt
+pn.csv
 *.log
 *.pot
 *.pyc
