@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "80:8000"
+    depends_on:
+      - mysql
+    volumes:
+      - ./backend:/backend
+
+  mysql:
+    build:
+      context: ./mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: aozora_book
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: root
+      TZ: "Asia/Tokyo"
+    volumes:
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - db_data:/var/lib/mysql
+    ports:
+      - 3308:3306
+
+volumes:
+  db_data:

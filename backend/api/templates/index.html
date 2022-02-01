@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        @font-face {
+            font-family: "Sawarabi Gothic";
+            src: url("../fonts/SawarabiGothic-Regular.ttf") format("truetype");
+        }
+
+        * {
+            font-family: "Sawarabi Gothic", sans-serif !important;
+            margin: 0;
+        }
+        .modal-dialog {
+            width: 1200px;
+            max-width: none;
+        }
+    </style>
+    <title>NLP App</title>
+</head>
+<body>
+<div id="app">
+    <header class="py-3 shadow-sm">
+        <div style="width: 1140px; margin: 0 auto;" class="h3">
+            作品合成＆感情分析
+        </div>
+    </header>
+    <main style="width: 1140px; margin: 0 auto;" class="py-4">
+        <div class="row">
+            <div class="col-3">
+                <ul class="list-group" style="max-height: 80vh; overflow-y: scroll;">
+                    <li 
+                        v-for="book in books" 
+                        :key="book.id" 
+                        @click="toggleActivate(book)"
+                        class="list-group-item"
+                        :class="{active: activeBooks.includes(book)}"
+                        style='cursor: pointer;'
+                    >
+                        ${book.title}
+                    </li>
+                </ul>
+            </div>
+            <div class="col-9">
+                <div v-show="activeBooks.length > 0">
+                    <ul class="list-group list-group-flush mb-4">
+                        <li 
+                            v-for="book in activeBooks" 
+                            :key="book.id" 
+                            class="list-group-item d-flex"
+                        >
+                            <span class="flex-fill">『${book.title}』</span>
+                            <span style="cursor: pointer" class="text-danger" @click="getContentAndChart(book)" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                内容を読む＆感情分析
+                            </span>
+                            <button type="button" class="btn-close ms-3" aria-label="Close" @click="toggleActivate(book)"></button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="d-flex justify-content-between mb-5">
+                    <span>←から合成する作品を選択してください</span>
+                    <button 
+                        v-show="activeBooks.length >= 2" 
+                        type="button" 
+                        class="btn btn-danger"
+                        @click="synthesizeContent"
+                        :disabled="loadingSynthesizeContent"
+                    >
+                        合成する
+                    </button>
+                </div>
+                <div class="border rounded p-3 d-flex align-items-center" v-if="loadingSynthesizeContent">
+                    <strong class="text-secondary">合成中...</strong>
+                    <div class="spinner-border ms-auto text-secondary" role="status" aria-hidden="true"></div>
+                </div>
+                <div class="border rounded p-3" v-show="synthesized.content !== '' && !loadingSynthesizeContent">
+                    <div class="h5 mb-4">
+                        『${synthesized.title}』
+                    </div>
+                    <div 
+                        v-html="htmlText(synthesized.content)"
+                    >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="bookModal" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookModal">『${modal.title}』</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body container-fluid px-4">
+                    <div class="d-flex align-items-center" v-if="loadingGetContentAndChart">
+                        <strong class="text-secondary">取得中...</strong>
+                        <div class="spinner-border ms-auto text-secondary" role="status" aria-hidden="true"></div>
+                    </div>
+                    <div class="row" v-show="!loadingGetContentAndChart">
+                        <div 
+                            class="col-6 border rounded p-3" 
+                            style="overflow-y: scroll; max-height: 80vh;"
+                            v-html="htmlText(modal.content)"
+                        >
+                        </div>
+                        <div class="col-6">
+                            <canvas id='chart'></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@2.6.14"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+<script src="https://unpkg.com/vue-chartjs/dist/vue-chartjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script>
+
+const app = new Vue({
+    delimiters: ['${', '}'], 
+    el: '#app',
+    data: {
+        loadingSynthesizeContent: false,
+        loadingGetContentAndChart: false,
+        books: [],
+        activeBooks: [],
+        fetchedBooks: [
+            {
+                id: 0,
+                title: '',
+                content: '',
+                chart: {}
+            }
+        ],
+        synthesized: {
+            title: '',
+            content: ''
+        },
+        modal: {
+            title: '',
+            content: ''
+        },
+    },
+    created() {
+        this.getBooks()
+    },
+    methods: {
+        async getBooks() {
+            const res = await axios.get('/api/books')
+            console.log(res.data.books)
+            this.books = res.data.books
+        },
+        toggleActivate(book) {
+            if (this.activeBooks.includes(book)) {
+                this.activeBooks = this.activeBooks.filter(activeBook => activeBook !== book)
+            } else {
+                this.activeBooks = [...this.activeBooks, book]
+            }
+        },
+        async synthesizeContent() {
+            this.loadingSynthesizeContent = true
+            const urls = this.activeBooks.map(book => 
+                book.url
+            )
+            const titles = this.activeBooks.map(book => 
+                book.title
+            )
+            const res = await axios.post('/api/synthesize_content_title/', {urls: urls, titles: titles})
+            this.synthesized.content = res.data.content
+            this.synthesized.title = res.data.title
+            this.loadingSynthesizeContent = false
+        },
+        async getContentAndChart(book) {
+            const fetchedBook = this.fetchedBooks.find(fetchedBook => 
+                fetchedBook.id === book.id
+            )
+            
+            if(fetchedBook) {
+                this.modal.title = fetchedBook.title
+                this.modal.content = fetchedBook.content
+                this.showChart(fetchedBook.chart)
+                return
+            }
+            this.loadingGetContentAndChart = true
+            
+            this.modal.title = book.title
+            const res = await axios.post('/api/content_chart/', {url: book.url})
+            this.modal.content = res.data.content
+            this.showChart(res.data.chart)
+            this.loadingGetContentAndChart = false
+
+            this.fetchedBooks = [...this.fetchedBooks, {
+                id: book.id,
+                title: book.title,
+                content: res.data.content,
+                chart: res.data.chart
+            }]
+        },
+        showChart(chart) {
+            var ctx = document.getElementById('chart').getContext('2d')
+            var chart = new Chart(ctx, {
+                type: 'line',
+                options: {
+                    responsive: true,
+                },
+                data: {
+                    labels: chart.x,
+                    datasets: [
+                        {
+                            label: 'ポジティブ',
+                            data: chart.pos,
+                            fill: false,
+                            borderColor: '#66bb6a',
+                            backgroundColor: '#66bb6a'
+                        },
+                        {
+                            label: 'ネガティブ',
+                            data: chart.neg,
+                            fill: false,
+                            borderColor: '#f44336',
+                            backgroundColor: '#f44336'
+                        },
+                    ]
+                }
+            })
+        },
+        htmlText(text){
+            if(!!(text)){
+                return text.replace(/\r?\n/g, '<br>')
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>
