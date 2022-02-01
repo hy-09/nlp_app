@@ -135,10 +135,11 @@ def get_synthesized_title(titles):
                 nouns = random.sample(dict['名詞'], 2)
                 return nouns[0] + 'の' + nouns[1]
             else:
-                word_count = random.randrange(1, len(dict['名詞']))
+                word_count = random.randrange(1, len(dict['名詞'])+1)
                 return ''.join(random.sample(dict['名詞'], word_count))
         else:
-            word_count = random.randrange(1, len(dict['名詞']))
+            word_count = random.randrange(1, len(dict['名詞'])+1)
+            print(word_count)
             return ''.join(random.sample(dict['名詞'], word_count))
     else:
         return 'ツァラトゥストラはかく語りき'
