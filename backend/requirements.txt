@@ -3,6 +3,5 @@ django==3.0.7
 djangorestframework==3.10
 gunicorn==20.1.0
 mysqlclient==2.0.1
-gensim==3.8.1
 janome==0.4.1
 requests==2.27.1
