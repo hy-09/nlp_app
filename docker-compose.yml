@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: ./backend
-    command: gunicorn config.wsgi --bind 0.0.0.0:8000
+    command: gunicorn config.wsgi --timeout 1000 --workers 1 --threads 4 --bind 0.0.0.0:8000
     ports:
       - "80:8000"
     depends_on:
