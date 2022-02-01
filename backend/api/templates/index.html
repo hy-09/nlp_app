@@ -29,49 +29,68 @@
             作品合成＆感情分析
         </div>
     </header>
-    <main style="width: 1140px; margin: 0 auto;" class="py-4">
+    <div 
+        class="d-flex align-items-center" 
+        style="width: 150px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" 
+        v-if="loadingGetBooks"
+    >
+        <strong class="text-secondary">本を取得中...</strong>
+        <div class="spinner-border ms-auto text-secondary" role="status" aria-hidden="true"></div>
+    </div>
+    <main style="width: 1140px; margin: 0 auto;" class="py-4" v-show="!loadingGetBooks">
         <div class="row">
             <div class="col-3">
-                <ul class="list-group" style="max-height: 80vh; overflow-y: scroll;">
-                    <li 
-                        v-for="book in books" 
-                        :key="book.id" 
-                        @click="toggleActivate(book)"
-                        class="list-group-item"
-                        :class="{active: activeBooks.includes(book)}"
-                        style='cursor: pointer;'
-                    >
-                        ${book.title}
-                    </li>
-                </ul>
-            </div>
-            <div class="col-9">
-                <div v-show="activeBooks.length > 0">
-                    <ul class="list-group list-group-flush mb-4">
+                <div style="max-height: 80vh; overflow-y: scroll;">
+                    <ul class="list-group" style="position: relative;">
                         <li 
-                            v-for="book in activeBooks" 
+                            v-for="book in books" 
                             :key="book.id" 
-                            class="list-group-item d-flex"
+                            @click="toggleActivate(book)"
+                            class="list-group-item"
+                            :class="{active: activeBooks.includes(book)}"
+                            style='cursor: pointer;'
                         >
-                            <span class="flex-fill">『${book.title}』</span>
-                            <span style="cursor: pointer" class="text-danger" @click="getContentAndChart(book)" data-bs-toggle="modal" data-bs-target="#exampleModal">
-                                内容を読む＆感情分析
-                            </span>
-                            <button type="button" class="btn-close ms-3" aria-label="Close" @click="toggleActivate(book)"></button>
+                            ${book.title}
                         </li>
+                        <div
+                            v-show="activeBooks.length >= 2"
+                            style="z-index: 999999; background-color: rgba(255,255,255,0.4); position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                        >
+                        </div>
                     </ul>
                 </div>
-                <div class="d-flex justify-content-between mb-5">
-                    <span>←から合成する作品を選択してください</span>
-                    <button 
-                        v-show="activeBooks.length >= 2" 
-                        type="button" 
-                        class="btn btn-danger"
-                        @click="synthesizeContent"
-                        :disabled="loadingSynthesizeContent"
-                    >
-                        合成する
-                    </button>
+            </div>
+            <div class="col-9">
+                <div v-show="!loadingSynthesizeContent">
+                    <div v-show="activeBooks.length > 0">
+                        <ul class="list-group list-group-flush mb-4">
+                            <li 
+                                v-for="book in activeBooks" 
+                                :key="book.id" 
+                                class="list-group-item d-flex"
+                            >
+                                <span class="flex-fill">『${book.title}』</span>
+                                <span style="cursor: pointer" class="text-danger" @click="getContentAndChart(book)" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                    内容を読む＆感情分析
+                                </span>
+                                <button type="button" class="btn-close ms-3" aria-label="Close" @click="toggleActivate(book)"></button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="d-flex justify-content-between mb-5">
+                        <div>
+                            <span v-show="activeBooks.length < 2">←から合成する作品を選択してください</span>
+                        </div>
+                        <button 
+                            v-show="activeBooks.length >= 2" 
+                            type="button" 
+                            class="btn btn-danger"
+                            @click="synthesizeContent"
+                            :disabled="loadingSynthesizeContent"
+                        >
+                            合成する
+                        </button>
+                    </div>
                 </div>
                 <div class="border rounded p-3 d-flex align-items-center" v-if="loadingSynthesizeContent">
                     <strong class="text-secondary">合成中...</strong>
@@ -129,6 +148,7 @@ const app = new Vue({
     delimiters: ['${', '}'], 
     el: '#app',
     data: {
+        loadingGetBooks: false,
         loadingSynthesizeContent: false,
         loadingGetContentAndChart: false,
         books: [],
@@ -155,8 +175,10 @@ const app = new Vue({
     },
     methods: {
         async getBooks() {
+            this.loadingGetBooks = true
             const res = await axios.get('/api/books')
             this.books = res.data.books
+            this.loadingGetBooks = false
         },
         toggleActivate(book) {
             if (this.activeBooks.includes(book)) {
@@ -187,7 +209,6 @@ const app = new Vue({
             
             this.modal.title = book.title
             const res = await axios.post('/api/content_chart/', {id: book.id, url: book.url})
-            console.log(res.data.chart)
             this.modal.content = res.data.content
             this.showChart(res.data.chart)
             this.loadingGetContentAndChart = false
